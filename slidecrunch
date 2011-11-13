@@ -107,7 +107,7 @@ $handout_template = <<<'EOD'
 \hypersetup{
   pdfauthor = {%%AUTHOR},
   pdftitle = {%%TITLE},
-  pdfcreator = {slidecrunch-0.9}
+  pdfcreator = {slidecrunch-1.0}
 }
 \usepackage{graphicx}
 \usepackage[letterpaper]{geometry}
@@ -291,7 +291,7 @@ class Presentation
     $out = "";
     foreach ($this->metadata as $key => $value)
       $out .= "InfoKey: $key\nInfoValue: $value\n";
-    $out .= "InfoKey: Creator\nInfoValue: slidecrunch-0.9\n";
+    $out .= "InfoKey: Creator\nInfoValue: slidecrunch-1.0\n";
     return $out;
   }
   
