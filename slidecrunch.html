@@ -1,0 +1,806 @@
+<!DOCTYPE html 
+     PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<head>
+<title>SlideCrunch - Documentation</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+</head>
+<body>
+
+<h1>SlideCrunch Documentation</h1>
+
+<p>SlideCrunch is a "Swiss Army knife" for anything related to the management
+of slide-based presentations. It can be used to produce slideshows from
+multiple input files. Moreover,
+if you provide information regarding slide duration
+or text, it can also generate annotated handouts, mixing scripts for producing
+a timed video and even matching subtitles.</p>
+
+<p>As an example, this <a href="http://www.youtube.com/watch?v=Pt_G563H7DA">slidecast</a> was
+generated automatically with SlideCrunch.</p>
+
+<h2>Summary</h2>
+
+<ul>
+<li><a href="#quickstart">Quick Start</a></li>
+<li><a href="#install">Installing and executing</a></li>
+<li><a href="#inputfile">What to put in <tt>slideshow.txt</tt></a></li>
+<li><a href="#handouts">Walkthrough #1: How to create handouts</a></li>
+<li><a href="#slidecasts">Walkthrough #2: How to create slidecasts</a></li>
+<li><a href="#options">Command-line options</a></li>
+<li><a href="#requirements">Requirements</a></li>
+<li><a href="#about">About the author</a></li>
+</ul>
+
+<a name="quickstart"></a><h2>Quick Start</h2> <!-- {{{ -->
+
+<p>SlideCrunch can be invoked very easily and assumes many default values
+for the input and output files. All these values can be overriden through
+<a href="#options">command line options</a>.</p>
+
+<ol>
+<li>
+<p>To <strong>merge a sequence of slide files</strong> into a single
+output PDF, type:</p>
+
+<pre>
+slidecrunch slideshow
+</pre>
+
+<p>SlideCrunch will look for the list of files to combine in
+<tt>slideshow.txt</tt> and output them into <a href="#inputfile"><tt>slideshow.pdf</tt></a>.
+If the list contains multi-layered SVG files, they are converted into
+multi-page PDF according to the conventions of
+<a href="http://projects.abourget.net/inkscapeslide/">InkscapeSlide</a>.
+(This option requires pdftk +
+inkscapeslide for SVG management, see the
+<a href="#requirements">requirements</a>.)</p>
+</li>
+
+<li>
+<p>To <strong>produce a handout</strong> from a set of slides, type:</p>
+
+<pre>
+slidecrunch handout
+</pre>
+
+<p>SlideCrunch will look for the slides in <tt>slideshow.pdf</tt>, place
+them vertically at 4 per page, with the text associated to each slide
+taken from <a href="#inputfile"><tt>slideshow.txt</tt></a>. 
+The resulting document will be
+<tt>handout.pdf</tt>. (This option requires LaTeX, see the
+<a href="#requirements">requirements</a>.)</p>
+</li>
+
+<li>
+<p>To <strong>produce a subtitle file</strong> from a set of slides, type:</p>
+
+<pre>
+slidecrunch subtitles
+</pre>
+
+<p>SlideCrunch will look for the text associated to each slide and
+timing information taken from <a href="#inputfile"><tt>slideshow.txt</tt></a>.
+The resulting document
+will be <tt>slideshow.srt</tt>.</p>
+</li>
+
+<li>
+<p>To <strong>split a slideshow into individual bitmaps</strong> (i.e. image
+files), type:</p>
+
+<pre>
+slidecrunch burst
+</pre>
+
+<p>SlideCrunch will split the slides taken from <tt>slideshow.pdf</tt>
+into individual JPEG files called <tt>slideshow-1.jpg</tt>, <tt>slideshow-2.jpg</tt>,
+and so on. Each image will have a resolution of 800x600 pixels.</p>
+</li>
+
+<li>
+<p>To <strong>produce an AVISynth mixing script</strong> from a set of slides, type:</p>
+
+<pre>
+slidecrunch avisynth
+</pre>
+
+<p>SlideCrunch will look for a list of images numbered <tt>slideshow-1.png</tt>,
+<tt>slideshow-2.png</tt>, and take the
+timing information from <a href="#inputfile"><tt>slideshow.txt</tt></a> to produce a script for
+AVISynth. (No requirement, but you need AVISynth to execute the resulting
+script, see the <a href="#requirements">requirements</a>.)</p>
+</li>
+
+</ol>
+
+<!-- }}} -->
+
+<a name="install"></a><h2>Installing and executing</h2> <!-- {{{ -->
+
+<p>SlideCrunch consists of a single PHP script, called <tt>slidecrunch</tt>.
+Just copy it in your working directory (or anywhere else).
+You can invoke it in two ways.</p>
+
+<ul>
+<li><tt>php slidecrunch</tt>: this calls the PHP interpreter to run
+the file</li>
+<li>Under Linux: <tt>./slidecrunch</tt> if you set the file as executable
+(with <tt>chmod u+x slidecrunch</tt>). You can also copy the file into,
+e.g. <tt>/usr/local/bin</tt> so that you can run it from anywhere.</li>
+</ul>
+
+<!-- }}} -->
+
+<a name="inputfile"></a><h2>What to put in <tt>slideshow.txt</tt></h2> <!-- {{{ -->
+
+<p>The file <tt>slideshow.txt</tt> is a simple text file
+required by SlideCrunch for almost
+all its options. Think of it as some form of "movie script"
+that describes what is in you slideshow; each option looks into that file
+for different kinds of
+information:</p>
+
+<ol>
+
+<li>
+<p>The <strong>list of input files</strong> (PDF or SVG) from which the
+slides are taken. To tell SlideCrunch to include a file, start a new line
+using the pipe (<tt>|</tt>) character followed by the file name, e.g.:</p>
+  <pre>
+  | myfirstfile.pdf
+  | mysecondfile.svg
+  | etc.
+  </pre>
+<p>SlideCrunch will take that list of files, produce the corresponding PDF
+(if the file is SVG), and then merge all these files together in the order
+they appear to produce the resulting slideshow. The same filename can appear
+multiple times (it will be repeated as many times as it appears), and the
+list needs not be grouped: filenames can be interspersed with other
+lines of information. SlideCrunch reads the whole file to find all the
+inputs.</p>
+</li>
+
+<li>
+<p><strong>Text associated to each slide</strong>. You can use the slideshow
+file to put text for each slide, such as comments on the slide or a direct
+transcript of your talk. To tell SlideCrunch you give information on a
+slide, you start a new line with a slide marker, most commonly the star
+(<tt>*</tt>) character, followed by any lines of text you like:</p>
+
+<pre>
+* This is some text associated to a slide.
+The text spans multiple lines.
+
+* This is the text for the following slide.
+Again we have multiple lines and it's OK.
+</pre>
+
+<p>Everything that follows the marker is considered as text for the slide,
+until a new marker is found, which starts another slide. Blank lines count,
+too: hence in the previous example, the carriage return between the two
+blocks of text counts as text for the first slide. (This is important if
+you want to produce paragraphs in handouts.)</p>
+
+<p>The symbols <tt>&lt;</tt> and <tt>&gt;</tt> are also slide markers. They
+matter only if you want to produce a handout and you don't want all slides
+to be displayed on paper; for all other options they behave exactly like
+the star. See <a href="#handouts">How to create handouts</a>.</p>
+</li>
+
+<li>
+<p><strong>Slide timing and numbering.</strong> Right next to the slide marker, you can
+specify the slide number and the time this slide should be displayed, expressed
+in number of minutes:seconds.xxx since the start of the presentation. </p>
+
+<pre>
+*1*00:00.000* This is the first slide at the beginning
+of the presentation.
+
+*2*00:10.500* This is the second slide, that appears 10.5 seconds
+after the beginning.
+
+*3*00:15.500* This is the third slide, that appears 15.5 seconds
+after the beginning. Since the previous slide appeared at 10.5 s,
+the second slide effectively lasts 5 seconds.
+</pre>
+
+<p>Beware,
+the time is not the slide duration, but the elapsed time since the beginning!</p>
+
+<p>If you use timing, you should also place one last slide marker to
+indicate the end of the presentation (and the length of the last slide).
+Hence if the complete presentation lasts 32 minutes and 52 seconds, you
+write:</p>
+
+<pre>
+*END*32:52.000*
+</pre>
+</li>
+
+<li>
+<p><strong>Slideshow metadata.</strong> You can have the output PDF have
+some of its fields filled with relevant information, such as author, title,
+keywords, etc. Many applications use the information in the PDF for
+display purposes, e.g. showing the PDF's title metadata in the window's
+title bar, etc. To specify metadata, just write the field followed by its
+value:</p>
+
+<pre>
+Author: Donald Duck
+Title:  Title of my presentation
+</pre>
+
+<p>This information can also be used in the handout: the title and author
+are displayed at the top of the first page. You can specify any fields you
+want, but they have to be at the top of the file. Once SlideCrunch sees a slide
+marker, it stops looking for metadata. (This is to avoid the confusion between
+a line of text that starts with a word and a colon.)</p>
+</li>
+
+<li>
+<p><strong>Comments.</strong> Any line that starts with two slashes
+(<tt>//</tt>) is ignored. You can use it to put annotations and comments
+into your file, for more readability</p>
+
+<pre>
+// This is my first presentation with SlideCrunch
+// Made by me on 11-11-11
+
+// We start with the list of files
+| 1.pdf
+| 2.pdf
+// | 3.pdf &lt;- this file won't be added
+
+// Then the slides
+* Hello, this is slide one.
+...
+</ol>
+
+<p>No single part of the file is mandatory: each option looks for different
+pieces of information. Namely:</p>
+
+<ul>
+<li><tt>slideshow</tt> only looks for input files and metadata, if any</li>
+<li><tt>handout</tt> only looks for slide text</li>
+<li><tt>subtitles</tt> looks for slide text and timing information</li>
+<li><tt>avisynth</tt> only looks for timing information</li>
+</ul>
+
+<!-- }}} -->
+
+<a name="handouts"></a><h2>Walkthrough #1: How to create handouts</h2> <!-- {{{ -->
+
+<p>A handout displays mini-slides and their associated text side-by-side,
+and is useful as presentation notes that you can print and distribute.
+SlideCrunch can be used to automatically generate a PDF handout from your
+slides and text. You need:</p>
+
+<ul>
+<li>A PDF of your slides, with each page being a slide. We assume the file
+is called <tt>slideshow.pdf</tt>.</li>
+<li>The list of slides and their associated text, marked in the <a href="#inputfile">format
+described above</a>. The file is called <tt>slideshow.txt</tt>.</li>
+</ul>
+
+<p>To simplify things, the commands to SlideCrunch assume the file names
+given above. Try to have the same filenames as in the tutorial --you can rename the files to your liking once
+you're done. Otherwise,
+make sure you replace the names appearing here with your own filenames;
+use the <a href="#options">command line options</a>.</p>
+
+<h3>Create the handout: default version</h3>
+
+<p>If you don't want to change anything, simply type:</p>
+
+<pre>
+slidecrunch handout
+</pre>
+
+<p>SlideCrunch will look for the slides in <tt>slideshow.pdf</tt>, place
+them vertically at around 4 per page (this depends on the amount of text),
+with the text associated to each slide
+taken from <a href="#inputfile"><tt>slideshow.txt</tt></a>. 
+The resulting document will be
+<tt>handout.pdf</tt>.</p>
+
+<h3>Overlays and "animation"</h3>
+
+<p>Some of your slides may consist of elements that are progressively
+shown or hidden, such as a bullet list where items are added one by one.
+In the resulting PDF file, this means that the same "slide" is repeated
+multiple times, each with one more element added to the previous one.
+In a handout, these "animation" effects create a lot of repeated slides;
+it is more appropriate to simply keep the "complete" slide and not include
+the partial animations.</p>
+
+<p>You can tell SlideCrunch that a slide should not be displayed by replacing
+the normal slide marker (<tt>*</tt>) with either <tt>&lt;</tt> or
+<tt>&gt;</tt>. The choice of which marker to use depends on what you want
+to do with the text associated to that slide: <tt>&lt;</tt> asks SlideCrunch
+to merge it with the text of the <em>last</em> displayed slide, while <tt>&gt;</tt>
+merges the text with that of the <em>next</em> displayed slide. Consider
+the following example:</p>
+
+<pre>
+* This is slide 1.
+&gt; This is slide 2.
+&gt; This is slide 3.
+* This is slide 4.
+* This is slide 5.
+&lt; This is slide 6.
+</pre>
+
+<p>The handout for this presentation will have three slides, those numbered
+1, 4 and 5, with the following text for each:</p>
+
+<table border="1">
+<tr><td>(Slide 1)</td><td>This is slide 1.</td></tr>
+<tr><td>(Slide 4)</td><td>This is slide 2. This is slide 3. This is slide 4.</td></tr>
+<tr><td>(Slide 5)</td><td>This is slide 5. This is slide 6.</td></tr>
+</table>
+
+<h3>Changing the template</h3>
+
+<p>SlideCrunch provides a default template for creating handouts. You can
+override these defaults and provide your own template, written as a LaTeX
+file structured as follows:</p>
+
+<pre>
+\documentclass &lt;- whatever declarations
+\usepackage... &lt;- whatever packages
+\begin{document}
+...
+%%SLIDE_CONTENT_HERE
+...
+%%BEGIN_SLIDE_TEMPLATE
+...
+(Template for each slide)
+...
+%%END_SLIDE_TEMPLATE
+...
+\end{document}
+</pre>
+
+<p>When producing the handout, SlideCrunch will take what's inside the
+<tt>%%BEGIN</tt>&hellip;<tt>%%END</tt>
+block as the code template for each slide. (This block is
+a declaration, it won't be part of the resulting document in itself.)
+It will then insert the generated content for all slides at the location
+of the <tt>%%SLIDE_CONTENT_HERE</tt> marker. All the rest of the document
+can be whatever LaTeX code you like.</p>
+
+<p>SlideCrunch will replace special words in you LaTeX file with information
+from the presentation and current slide. All text is properly
+  escaped to form a valid LaTeX input.</p>
+
+<h4>Global words (work anywhere)</h4>
+
+<ul>
+<li><tt>%%AUTHOR</tt>: the author of the presentation, if specified in
+<tt>slideshow.txt</tt></li>
+<li><tt>%%TITLE</tt>: the title of the presentation, if specified in
+<tt>slideshow.txt</tt></li>
+</ul>
+
+<h4>Slide words (works in slide template only)</h4>
+
+<ul>
+<li><tt>%%SLIDE_TEXT</tt>: put it at the location in the file where you
+  want the text of the current slide to be shown.</li>
+<li><tt>%%PAGE_NO</tt>: the page number in the source PDF for the current slide</li>
+<li><tt>%%FILE_NAME</tt>: the filename of the source PDF</li>
+</ul>
+
+<p>To replace the default template, either:</p>
+
+<ol>
+<li>Put in your working directory a file called <tt>handout-template.tex</tt>;
+SlideCrunch looks for such a file every time it is run; or</li>
+<li>Use the command-line argument <tt>-t</tt> to specify a filename for the
+template to use</li>
+</ol>
+
+<h3>Cue markers</h3>
+
+<p>You can also add cue markers throughout the text to indicate the moments
+where slides change. This is useful in particular when text from multiple
+slides is merged into a single entry, to know where along the text one is
+expected to move forward in the "animation". The command-line option
+<tt>--show-cues</tt> enables this behaviour.</p>
+
+<p>When activated, SlideCrunch
+will add in the text at the proper location a call to a user-defined command
+<tt>\cu<b><u>r</u></b>marker{p}</tt>, where <i>p</i> is the current page number in the
+source PDF. If the slide change corresponds to a slide that is not being displayed
+in the handout, then SlideCrunch inserts <tt>\cu<b><u>e</u></b>marker{p}</tt>
+instead (notice the difference: cu<b><u>e</u></b> vs. cu<b><u>r</u></b>).
+It is up to you to define what such a marker should
+look like by defining your own LaTeX commands. (SlideCrunch's default
+template provides an example.)</p>
+
+<!-- }}} -->
+
+<a name="slidecasts"></a><h2>Walkthrough #2: How to create a slidecast</h2> <!-- {{{ --->
+
+<p>You need to have all these files, copied in the same folder for convenience:</p>
+
+<ul>
+<li>A slideshow PDF, where each page is one slide. You can create such slideshows
+with SlideCrunch itself, or use any other PDF.
+</li>
+
+<li>The recording of your slidecast in an audio file (such as MP3, WAV or
+OGG). Mine was called <tt>slideshow.mp3</tt>. I won't tell you how to record
+yourself properly, I guess there are tutorials for that.</li>
+
+<li>The complete text of your slidecast in a plain-text file. Mine was
+called <tt>slideshow.txt</tt>.</li>
+</ul>
+
+<p>To simplify things, the commands to SlideCrunch assume the file names
+given above. Try to have the same filenames as in the tutorial --you can rename the files to your liking once
+you're done. Otherwise,
+make sure you replace the names appearing here with your own filenames;
+use the <a href="#options">command line options</a>.</p>
+
+<h3>What <em>software</em> you need</h3>
+
+<p>If you don't have the following, please install them using the default options before
+moving on. All of these are free.</p>
+
+<ul>
+<li><a href="http://www.virtualdub.org/">VirtualDub</a>, a video file editor
+(or <a href="http://www.avidemux.org/admWiki/doku.php">AviDemux</a> for Linux users, both work essentially the same way)</li>
+<li><a href="http://www.avisynth.org/">AviSynth</a>, a non-linear video processing engine</li>
+<li>An audio player, such as <a href="http://www.winamp.com/">Winamp</a>, <a href="http://www.foobar2000.org/">foobar2000</a>,
+Windows Media Player. This will be used to figure out the time points where you change your slides. If you
+want to be more precise and don't mind the (slightly) extra complexity, you can use a full-fledged audio
+editor such as <a href="http://audacity.sourceforge.net/">Audacity</a>.</li>
+<li>The MidVid JPEG Video Codec (Google, download and install)</li>
+<li>SlideCrunch, obviously.</li>
+</ul>
+
+<h3>Step 0: split the PDF into separate images</h3>
+
+<p>This is a pre-step: simply run</p>
+
+<pre>
+slidecrunch burst
+</pre>
+
+<p>and SlideCrunch will produce a
+set of image files (in JPEG format, but this can also be changed), numbered
+sequentially from 1 to whatever number of slides you have. In my example,
+the files are called <tt>slideshow-001.png</tt> to
+<tt>slideshow-125.png</tt>.</p>
+
+<h3>Step 1: setup the time points</h3>
+
+<p>The first part of the work is the most tedious one: you must write down the moments in the audio file where you move
+to the next slide. These will be expressed in the number of minutes and seconds elapsed from the beginning of your speech.</p>
+
+<p>To do so, open <tt>slideshow.mp3</tt> in your audio player, and start playing the file with your slideshow at hand. When the audio reaches the moment where you need to go to the next slide, press Pause on the audio player and write down the elapsed time. Most audio players have a cursor that you can move around to jump back or forward, so if you missed the cue, you can rewind a few seconds and try again.</p>
+
+<p><img src="http://www.leduotang.com/sylvain/sites/default/files/Winamp.jpg" alt="Screenshot" /></p>
+
+<p>You will then insert these "cuepoints" throughout the text file <tt>slideshow.txt</tt> containing the transcript of your audio, as follows. Suppose this is the text for the beginning of my presentation:</p>
+
+<pre>
+Hello, my name is Sylvain, and this is my super duper
+presentation. You will see how the sildes change
+automatically when I jump to the next topic.
+
+You see? Now we are at the second slide, and if we
+had a third one, we could jump to it as well.
+...
+</pre>
+
+<p>Your first cuepoint is (obviously) slide number 1 at the beginning of the first
+paragraph. This corresponds to the beginning of the audio file, so 0 minutes and 0
+seconds. You write this as <tt>*#*mm:ss.xxx*</tt>, where:</p>
+
+<ul>
+<li># is the slide number</li>
+<li>mm:ss.xxx is the elapsed time, with mm minutes, ss seconds and xxx milliseconds</li>
+</ul>
+
+<p>If your media player doesn't show milliseconds, you can just replace them with "000". So
+the first cuepoint is written <tt>*1*00:00.000*</tt>, and you place it at the beginning
+of your file, in front of the first paragraph:</p>
+
+<pre>
+<strong>*1*00:00.000*</strong> Hello, my name is Sylvain, and this is my super duper
+presentation. You will see how the sildes change
+automatically when I jump to the next topic.
+
+You see? Now we are at the second slide, and if we
+had a third one, we could jump to it as well.
+...
+
+</pre>
+
+<p>Suppose now you measured that the second slide should be shown at
+7.5 seconds from the beginning, you insert the second cuepoint at its
+appropriate location in the text:</p>
+
+<pre>
+*1*00:00.000* Hello, my name is Sylvain, and this is my super duper
+presentation. You will see how the sildes change
+automatically when I jump to the next topic.
+
+<strong>*2*00:07.500*</strong> You see? Now we are at the second slide, and if we
+had a third one, we could jump to it as well.
+...
+</pre>
+
+<p>...and so on. A slide change can occur in the middle of a sentence:</p>
+
+<pre>
+...
+If we continue talking, you will realize that
+
+
+<strong>*3*00:14.000*</strong> I switched to the next slide while
+I talked.
+</pre>
+
+<p>Just make sure that a cuepoint begins at the start of the new line.
+Similarly, a paragraph that doesn't start with a cue point is just
+that: a paragraph, and is considered as the continuation of the text
+for the current slide.</p>
+
+<p>Finally, finish your text with the end time for your audio file.
+Mine was 32 minutes and 52 seconds long, so I put this as the last
+line of my text file:</p>
+
+<pre>
+<strong>*END*32:52.000*</strong>
+</pre>
+
+<h3>Step 2: Generate the slidehow</h3>
+
+<p>The first step was rather tedious, but once your text is annotated with the
+slidechanges and time points, a lot of fun things can be done
+automatically.</p>
+
+<p>If you used the filenames in this tutorial, the default values
+are setup properly. Just run:
+
+<pre>
+slidecrunch avisynth
+</pre>
+
+<p>The script will create a file <tt>slideshow.avs</tt>
+with a bunch of commands like
+these:</p>
+
+<pre>
+# --------------------------------------------------
+# Auto-generated file by slidecrunch
+# (C) 2010-2011 Sylvain Hallé
+# --------------------------------------------------
+
+video = ImageSource("Slide_001.jpg", fps=4).BicubicResize(640,480).Trim(0,98)
+video = video + ImageSource("Slide_002.jpg", fps=4).BicubicResize(640,480).Trim(0,79)
+video = video + ImageSource("Slide_003.jpg", fps=4).BicubicResize(640,480).Trim(0,60)
+...
+</pre>
+
+<h3>Step 3: Save the slide show as a video</h3>
+
+<p>Now open VirtualDub, an in the File menu, click Open and select
+<tt>Slidecast.avs</tt>. (You may not see the file in the list;
+if this is the case, make sure that the "Files of type" drop-down list
+at the bottom is set to "AVIFile input driver".)</p>
+
+<p>Your file should open as a video, showing the first slide:</p>
+
+<p><img src="http://www.leduotang.com/sylvain/sites/default/files/VD-1.jpg" alt="Screenshot" /></p>
+
+<p>VirtualDub provides controls to play the file. However an AviSynth
+script file like the one you just loaded is a bit different; <em>don't</em>
+press the Play button or move around the file
+unless you know what you're doing. (If you're
+curious, more on that later.)</p>
+
+<p>To export your presentation as a video, you must setup compression
+settings for audio and video:</p>
+
+<ol>
+<li>In the Audio menu, choose Direct Stream Copy</li>
+<li>In the Video menu, choose Full Processing Mode if it is not already checked</li>
+
+<li>Go back to the Video menu, and choose Compression...</li>
+<li>At the left is a list of compression formats, or <em>codecs</em>.
+You can pick any one, but for this tutorial select "MidiVid JPEG Codec".
+(If you think using DivX or other stuff, see below.)
+<p><img src="http://www.leduotang.com/sylvain/sites/default/files/VD-2.jpg" alt="Screenshot" /></p>
+</li>
+<li>Leave the Quality slider to a relatively high value (say, at least 80).
+Click OK.</li>
+<li>In the File menu, choose Save as AVI. Save it as <tt>Slidecast.avi</tt>.</li>
+</ol>
+
+<p>Depending on your computer's speed and the length of your slidecast, the process can take from
+a few seconds to several minutes. Be patient.</p>
+
+<p><img src="http://www.leduotang.com/sylvain/sites/default/files/VD-3.jpg" alt="Screenshot" /></p>
+
+<p>Once this is done, you can double-click on <tt>Slidecast.avi</tt> or open it
+into any media player, such as Windows Media Player. It should show the slides that
+change along with the audio, at the timepoints you gave in your text file. Voilà!</p>
+
+<h3>Bonus: generate the subtitles</h3>
+
+<p>Since you have the complete transcript of your slidecast AND
+a bunch of cuepoints telling how that text is distributed over time,
+for free you can also generate a subtitle file that can be used to
+display text over your video, like in movies.</p>
+
+<p>Of course, you realize that you probably say a lot of text over
+a single slide --certainly much more that what can fit in one or two lines
+of text at the bottom of the screen. The trick is this: since we
+know how long each slide lasts, we will split its associated
+text into 1 or 2-line
+snippets and spread them evenly over the total duration of the slide.
+I tried it with my own slidecast, and I was surprised how closely
+the text follows the audio --almost as if someone used a
+teleprompter!</p>
+
+<p>Doing so is really simple with SlideCrunch: just run</p>
+
+<pre>
+slidecrunch subtitles
+</pre>
+
+<p>This time, the script produces another text file called
+<tt>slideshow.srt</tt> that looks like
+this:</p>
+
+<pre>
+0
+00:00:00,000 --> 00:00:03,750
+Hello, my name is Sylvain, and this is
+my super duper
+presentation. You will see how the
+
+1
+00:00:03,750 --&gt; 00:00:07,500
+sildes change
+automatically when I jump to the next
+topic.
+
+2
+00:00:07,500 --&gt; 00:00:10,750
+You see? Now we are at the second
+slide, and if we
+had a third one, we
+
+3
+00:00:10,750 --&gt; 00:00:14,000
+could jump to it as well.
+If we continue
+talking, you will realize that
+
+</pre>
+
+<p>This is a file in the <a href="http://en.wikipedia.org/wiki/SubRip">SubRip</a> (SRT) format.
+Each bunch of text is one subtitle; notice how the text for the first slide
+in our example (lasting 7.5 seconds) has been split into two cards lasting 3.75
+seconds each.</p>
+
+<p>If you re-open <tt>slideshow.avi</tt> in your media player, this time
+the subtitles, taken from the file,
+should also be shown as you talk (this happens every time
+an <tt>xxx.srt</tt> file exists in the same folder as <tt>xxx.avi</tt>.
+In my case, the result
+was spookily faithful.</p>
+
+<p><img src="http://www.leduotang.com/sylvain/sites/default/files/Sub-WMP.jpg" alt="Screenshot" /></p>
+
+<p>Some online services, such as YouTube, allow you to <a href="http://www.google.com/support/youtube/bin/answer.py?hl=en&amp;answer=100079">attach subtitles</a>
+to an online video.</p>
+
+<!-- }}} -->
+
+<a name="options"></a><h2>Command-line options</h2> <!-- {{{ -->
+
+<p>Usage:</p>
+
+<pre>
+slidecrunch [--help] action [inputfile] [options]
+</pre>
+
+<p>Possible values for <tt>action</tt>:</p>
+<dl>
+  <dt><tt>slideshow</tt></dt><dd>Produce a full-screen PDF slideshow from input file</dd>
+  <dt><tt>handout</tt></dt> <dd>     Produce a PDF handout of slides</dd>
+  <dt><tt>subtitles</tt></dt><dd>    Produce a subtitle (SRT) file</dd>
+  <dt><tt>avisynth</tt></dt><dd>    Produce an AviSynth script</dd>
+  <dt><tt>burst</tt></dt><dd>    Burst PDF into multiple images</dd>
+</dl>
+
+<p>Global options:</p>
+<dl>
+  <dt><tt>-o <i>file</i></tt></dt><dd>      Output to file (default: <tt>slideshow.xxx</tt>, depending on action)</dd>
+  <dt><tt>-v <i>n</i></tt></dt><dd>         Set verbosity level to n (0 = no output)</dd>
+  <dt><tt>--no-clean</tt></dt><dd>   Don't remove temporary files at the end</dd>
+  <dt><tt>--clean</tt></dt><dd>      Do remove temporary files at the end</dd>
+</dl>
+
+<p>Options for <tt>handout</tt>:</p>
+<dl>
+   <dt><tt>-i <i>file</i></tt></dt><dd>      PDF source file (default: <tt>slideshow.pdf</tt>)</dd>
+   <dt><tt>--show-cues</tt></dt><dd>  Add a cue symbol in text at each slide change</dd>
+   <dt><tt>--no-compile</tt></dt><dd> Don't compile LaTeX source</dd>
+   <dt><tt>-t <i>file</i></tt></dt><dd>      Use <i>file</i> as template</dd>
+</dl>
+
+<p>Options for <tt>avisynth</tt> and <tt>subtitles</tt>:</p>
+<dl>
+  <dt><tt>--fps <i>n</i></tt></dt><dd>      Set frame rate of output video to n (default: 4)</dd>
+  <dt><tt>--audio <i>file</i></tt></dt><dd> Specify audio input to file (default: slideshow.mp3)</dd>
+</dl>
+
+<p>Options for <tt>avisynth</tt>, <tt>subtitles</tt> and <tt>burst</tt>:</p>
+<dl>
+  <dt><tt>--width <i>n</i></tt></dt><dd>    Set image width to n (default: 800)</dd>
+  <dt><tt>--height <i>n</i></tt></dt><dd>   Set image height to n (default: 600)</dd>
+  <dt><tt>--format <i>x</i></tt></dt><dd>   Set image format for slides (default: jpg)</dd>
+</dl>
+
+<!-- }}} -->
+
+<a name="requirements"></a><h2>Requirements</h2> <!-- {{{ -->
+
+<p>SlideCrunch is mostly the "glue" between a bunch of existing applications
+to help producing slideshows.
+Hence to run SlideCrunch, you need some other software installed, depending
+on you use. All of them are <strong>free</strong>:</p>
+
+<ul>
+<li>A PHP interpreter. SlideCrunch is written in PHP. PHP is free and there
+are distributions for all OSes, see <a href="http://php.net">php.net</a> for
+a starting point. (Required all the time.)</li>
+
+<li><a href="http://www.pdflabs.com/tools/pdftk-the-pdf-toolkit/">pdftk</a>,
+the PDF toolkit. This is necessary to join/split PDF files (i.e. the 
+<tt>burst</tt> and
+<tt>slideshow</tt> options).</li>
+
+<li><a href="http://www.latex-project.org/">LaTeX</a>, if you want to
+create handouts. (You can also
+tell SlideCrunch to produce the LaTeX file without
+calling LaTeX to compile it, see the <a href="#options">options</a>.)</li>
+
+<li><a href="http://projects.abourget.net/inkscapeslide/">InkscapeSlide</a>,
+if you want to automatically split multi-layer SVG files
+into multi-page PDFs (in the <tt>slidedhow</tt> option).</li>
+
+<li><a href="http://www.imagemagick.org/">ImageMagick</a>,
+if you want to convert PDFs automatically into image files (e.g. in the
+<tt>burst</tt> option).</li>
+
+<li><a href="http://www.avisynth.org/">AviSynth</a>, a powerful frameserver,
+to produce the video file from a set of slides. Actually, SlideCrunch does
+not require AviSynth, but you need AviSynth to process the file that
+SlideCrunch produces.</li>
+
+</ul>
+
+<!-- }}} -->
+
+<a name="about"></a><h2>About the author</h2> <!-- {{{ -->
+
+<p>SlideCrunch was written by <a href="http://www.leduotang.com/sylvain/">Sylvain Hallé</a>,
+professor at <a href="http://www.uqac.ca/">Université du Québec à Chicoutimi</a>,
+who prepares lots of presentations, slidecasts and handouts, and who was
+tired of doing what SlideCrunch is now taking care of automatically. Think
+of how much spare time now lies ahead.</p>
+
+<!-- }}} -->
+
+</body>
+<!-- :mode=html:folding=explicit: -->
