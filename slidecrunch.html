@@ -5,8 +5,14 @@
 <head>
 <title>SlideCrunch - Documentation</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link type="text/css" rel="stylesheet" href="site.css" />
 </head>
 <body>
+
+<div id="header">
+<div id="logo">
+</div>
+</div>
 
 <h1>SlideCrunch Documentation</h1>
 
@@ -20,6 +26,10 @@ a timed video and even matching subtitles.</p>
 <p>As an example, this <a href="http://www.youtube.com/watch?v=Pt_G563H7DA">slidecast</a> was
 generated automatically with SlideCrunch.</p>
 
+<h2>Download SlideCrunch</h2>
+
+<p>Get SlideCrunch on the <a href="http://sourceforge.net/projects/slidecrunch/">SourceForge project page</a>.</p>
+
 <h2>Summary</h2>
 
 <ul>
@@ -30,6 +40,7 @@ generated automatically with SlideCrunch.</p>
 <li><a href="#slidecasts">Walkthrough #2: How to create slidecasts</a></li>
 <li><a href="#options">Command-line options</a></li>
 <li><a href="#requirements">Requirements</a></li>
+<li><a href="#issues">Known issues</a></li>
 <li><a href="#about">About the author</a></li>
 </ul>
 
@@ -382,6 +393,9 @@ from the presentation and current slide. All text is properly
 <tt>slideshow.txt</tt></li>
 <li><tt>%%TITLE</tt>: the title of the presentation, if specified in
 <tt>slideshow.txt</tt></li>
+<li><tt>%%SLIDE_WIDTH</tt>: the width given to slide thumbnails; the
+default (<tt>3in</tt>) can be overridden through the command-line
+switch <tt>--width</tt></li>
 </ul>
 
 <h4>Slide words (works in slide template only)</h4>
@@ -559,7 +573,7 @@ line of my text file:</p>
 <strong>*END*32:52.000*</strong>
 </pre>
 
-<h3>Step 2: Generate the slidehow</h3>
+<h3>Step 2: Generate the slideshow</h3>
 
 <p>The first step was rather tedious, but once your text is annotated with the
 slidechanges and time points, a lot of fun things can be done
@@ -720,6 +734,7 @@ slidecrunch [--help] action [inputfile] [options]
   <dt><tt>subtitles</tt></dt><dd>    Produce a subtitle (SRT) file</dd>
   <dt><tt>avisynth</tt></dt><dd>    Produce an AviSynth script</dd>
   <dt><tt>burst</tt></dt><dd>    Burst PDF into multiple images</dd>
+  <dt><tt>clean</tt></dt><dd>    Remove PDFs generated from SVGs</dd>
 </dl>
 
 <p>Global options:</p>
@@ -728,6 +743,7 @@ slidecrunch [--help] action [inputfile] [options]
   <dt><tt>-v <i>n</i></tt></dt><dd>         Set verbosity level to n (0 = no output)</dd>
   <dt><tt>--no-clean</tt></dt><dd>   Don't remove temporary files at the end</dd>
   <dt><tt>--clean</tt></dt><dd>      Do remove temporary files at the end</dd>
+  <dt><tt>--force-recompile</tt></dt><dd>Re-process all input files even if they have not been modified</dd>
 </dl>
 
 <p>Options for <tt>handout</tt>:</p>
@@ -735,6 +751,7 @@ slidecrunch [--help] action [inputfile] [options]
    <dt><tt>-i <i>file</i></tt></dt><dd>      PDF source file (default: <tt>slideshow.pdf</tt>)</dd>
    <dt><tt>--show-cues</tt></dt><dd>  Add a cue symbol in text at each slide change</dd>
    <dt><tt>--no-compile</tt></dt><dd> Don't compile LaTeX source</dd>
+   <dt><tt>--width <i>x</i></tt></dt><dd> Set slide width to <i>x</i></dd>
    <dt><tt>-t <i>file</i></tt></dt><dd>      Use <i>file</i> as template</dd>
 </dl>
 
@@ -758,7 +775,7 @@ slidecrunch [--help] action [inputfile] [options]
 <p>SlideCrunch is mostly the "glue" between a bunch of existing applications
 to help producing slideshows.
 Hence to run SlideCrunch, you need some other software installed, depending
-on you use. All of them are <strong>free</strong>:</p>
+on your use. All of them are <strong>free</strong>:</p>
 
 <ul>
 <li>A PHP interpreter. SlideCrunch is written in PHP. PHP is free and there
@@ -801,6 +818,27 @@ tired of doing what SlideCrunch is now taking care of automatically. Think
 of how much spare time now lies ahead.</p>
 
 <!-- }}} -->
+
+<a name="issues"></a><h2>Known issues</h2> <!-- {{{ -->
+
+<p>The <a href="http://sourceforge.net/projects/slidecrunch/">SourceForge page</a>
+reports all bugs and known issues. If you find a bug,
+please add it there. However there are a couple of known issues we know
+about.</p>
+
+<ul>
+<li>If you include SVGs and create a slideshow, you must be in a
+directory whose full path from the root of the file system does not
+contain any space. This is due to a bug in inkscapeslide, which
+SlideCrunch uses in the background.</li>
+<li>Actually, that's the only issue we know about for the moment.</li>
+</ul>
+
+
+<!-- }}} -->
+
+<hr />
+<p>&copy; 2010-2013 Sylvain Hallé. Last modified: 2013-05-10</p>
 
 </body>
 <!-- :mode=html:folding=explicit: -->

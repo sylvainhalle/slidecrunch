@@ -8,7 +8,7 @@
     a text description of your presentation.
     
     Author:  Sylvain Hallé
-    Date:    2011-11-11
+    Date:    2013-05-09
     
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 $usage_string = <<<EOD
 
-Create slideshows from multi-layered PNG files
+Slidecrunch v1.04 - Create slideshows from multi-layered SVG files
 Usage: slidecrunch [--help] action [inputfile] [options]
 
 Possible values for action:
@@ -35,12 +35,16 @@ Possible values for action:
   subtitles    Produce a subtitle (SRT) file
   avisynth     Produce an AviSynth script
   burst        Burst PDF into multiple images
+  clean        Remove PDFs generated from SVGs
 
 Global options:
   -o file      Output to file (default: slideshow.xxx, depending on action)
   -v n         Set verbosity level to n (default: 0 = no output)
   --no-clean   Don't remove temporary files at the end
   --clean      Do remove temporary files at the end
+  --version    Show version number and exit
+  --force-recompile
+               Re-process all input files even if they have not been modified
 
 Options for handout:
   -i file      PDF source file (default: slideshow.pdf)
@@ -65,6 +69,7 @@ $params = array();
 $params["verbosity"] = 1;
 $params["no-clean"] = false;
 $params["show-cues"] = false;
+$params["force-recompile"] = false;
 $params["latex-compile"] = true;
 $params["handout-template"] = "handout-template.tex";
 $params["inputfile"] = "slideshow.txt";
@@ -107,7 +112,7 @@ $handout_template = <<<'EOD'
 \hypersetup{
   pdfauthor = {%%AUTHOR},
   pdftitle = {%%TITLE},
-  pdfcreator = {slidecrunch-1.0}
+  pdfcreator = {slidecrunch-1.04}
 }
 \usepackage{graphicx}
 \usepackage[letterpaper]{geometry}
@@ -245,6 +250,10 @@ for ($i = 1, $value = $argv[$i]; $i < count($argv) && $value = $argv[$i]; $i++)
   {
     $params["latex-compile"] = false;
   }
+  elseif ($value === "--force-recompile")
+  {
+    $params["force-recompile"] = true;
+  }
   elseif ($value === "--width")
   {
     $to_set = "width";
@@ -291,7 +300,7 @@ class Presentation
     $out = "";
     foreach ($this->metadata as $key => $value)
       $out .= "InfoKey: $key\nInfoValue: $value\n";
-    $out .= "InfoKey: Creator\nInfoValue: slidecrunch-1.0\n";
+    $out .= "InfoKey: Creator\nInfoValue: slidecrunch-1.04\n";
     return $out;
   }
   
@@ -423,18 +432,31 @@ if ($params["action"] === "slideshow")
     $params["outfile"] = "slideshow.pdf";
   spitln("Creating slideshow...");
   $pdftk_args = "";
+  // Get output file's timestamp
+  $outfile_time = @filemtime($params["outfile"]);
+  // Loop over input files
   foreach($pres->input_files as $in_filename)
   {
     $pdf_out = $in_filename;
     $file_ext = pathinfo($in_filename, PATHINFO_EXTENSION);
     if (strtolower($file_ext) === "svg")
     {
-      // We crunch SVG files into multi-page PDFs
-      spitln("Processing $in_filename with inkscapeslide");
-      exec("inkscapeslide $in_filename");
       $pdf_out = str_replace(".svg", ".pdf", $in_filename);
+      // Check if SVG's timestamp is more recent than the resulting PDF
+      $svg_filetime = @filemtime($in_filename);
+      $pdf_filetime = @filemtime($pdf_out);
+      if ($pdf_filetime !== false && $svg_filetime !== false && $pdf_filetime > $svg_filetime && !$params["force-recompile"])
+      {
+        spitln("Skipping $in_filename: it has not been modified since last crunch");
+      }
+      else
+      {
+        // We crunch SVG files into multi-page PDFs
+        spitln("Processing $in_filename with inkscapeslide");
+        exec("inkscapeslide \"$in_filename\"");
+      }
     }
-    $pdftk_args .= " ".$pdf_out;
+    $pdftk_args .= " \"".$pdf_out."\"";
   }
   // Execute pdftk to join all files together
   spitln("Joining files with pdftk...");
@@ -733,6 +755,30 @@ if ($params["action"] === "burst")
   {
     show_error("Error executing imagemagick");
     exit(1);
+  }
+  spitln("Done");
+  exit(0);
+}
+// }}}
+
+// Do we remove temporary files? // {{{
+if ($params["action"] === "clean")
+{
+  // Loop over input files
+  foreach($pres->input_files as $in_filename)
+  {
+    $file_ext = pathinfo($in_filename, PATHINFO_EXTENSION);
+    if (strtolower($file_ext) === "svg")
+    {
+      // This file's source is SVG, so we can remove the PDF created from it
+      // by inkscapeslide
+      $pdf_out = str_replace(".svg", ".pdf", $in_filename);
+      if (file_exists($pdf_out))
+      {
+        spitln("Removing $pdf_out");
+        unlink($pdf_out);
+      }
+    }
   }
   spitln("Done");
   exit(0);
