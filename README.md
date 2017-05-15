@@ -1,0 +1,1 @@
+SlideCrunch is a "Swiss Army knife" for anything related to the management of slide-based presentations. It can be used to produce slideshows from multiple input files. Moreover, if you provide information regarding slide duration or text, it can also generate annotated handouts, mixing scripts for producing a timed video and even matching subtitles.
