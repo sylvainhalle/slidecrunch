@@ -1,0 +1,27 @@
+/* CSS for SiteCrunch site */
+
+body {
+  font-family: sans-serif;
+  margin-top: 140px;
+}
+
+#header {
+  background: url('logo-background.png') repeat-x;
+  width: 100%;
+  display: block;
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  border-bottom: solid 8px #d96b68;
+}
+
+#logo {
+  background: url('slidecrunch-small.png') 10px 10px no-repeat;
+  width: 223px;
+  height: 119px;
+  display: block;
+}
+
+h1, h2, h3, a, a:visited {
+  color: #d96b68;
+}
