@@ -2,13 +2,13 @@
 <?php
 /**************************************************************************
     Slide cruncher
-    Copyright (C) 2010-2013  Sylvain Hallé
+    Copyright (C) 2010-2020  Sylvain Hallé
     
     Create PDF slideshows and handouts from multiple image files and
     a text description of your presentation.
     
     Author:  Sylvain Hallé
-    Date:    2013-05-09
+    Date:    2020-05-12
     
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,7 +26,9 @@
 
 $usage_string = <<<EOD
 
-Slidecrunch v1.2 - Create slideshows from multi-layered SVG files
+Slidecrunch v1.3 - Create slideshows from multi-layered SVG files
+https://sylvainhalle.github.io/slidecrunch
+
 Usage: slidecrunch [--help] action [inputfile] [options]
 
 Possible values for action:
@@ -60,7 +62,10 @@ Options for avisynth, subtitles and burst:
 Options for avisynth and subtitles:
   --fps n      Set frame rate of output video to n (default: 4)
   --audio file Specify audio input to file (default: slideshow.mp3)
+  --track file Use label track from file
 
+Options for burst:
+  --start-at n Start at page n in input PDF
 EOD;
 /*----------------------*/
 
@@ -83,6 +88,7 @@ $params["cnt-end"] = "9";
 $params["fps"] = 4;
 $params["words-per-subtitle"] = 16;
 $params["words-per-line"] = 8;
+$params["burst-from"] = 1;
 // }}}
 
 // Handout templates {{{
@@ -265,6 +271,14 @@ for ($i = 1, $value = $argv[$i]; $i < count($argv) && $value = $argv[$i]; $i++)
   elseif ($value === "--format")
   {
     $to_set = "extension";
+  }
+  elseif ($value === "--start-at")
+  {
+    $to_set = "burst-from";
+  }
+  elseif ($value === "--track")
+  {
+    $to_set = "label-track";
   }
   elseif ($value === "-t")
   {
@@ -653,59 +667,108 @@ if ($params["action"] === "avisynth")
   if (isset($pres->metadata["Author"]))
     $out .= "# Author: ".$pres->metadata["Author"]."\n";
   $out .= "# Auto-generated file by slidecrunch\n";
-  $out .= "# (C) 2010-2011 Sylvain Hallé\n";
+  $out .= "# https://sylvainhalle.github.io/slidecrunch\n";
+  $out .= "# (C) 2010-2020 Sylvain Hallé\n";
   $out .= "# --------------------------------------------------\n\n";
   
-  // Process cuemarks
-  $first = true;
-  $current_frame = 0;
-  $current_time_ms = 0;
-  $file_count = $params["cnt-start"];
-  $number_size = strlen($params["cnt-end"]);
-  foreach ($pres->slides as $slide)
+  if (isset($params["label-track"]))
   {
-    // Process time for cuemark
-    spit(".", 1);
-    $cue_slideno = $slide->number;
-    $cue_time_ms = $slide->cue_time;
-    $duration_ms = $cue_time_ms - $current_time_ms;
-    $frame_duration = floor(ms_to_frame($duration_ms, $params["fps"]));
-    $current_frame += $frame_duration;
-    // If the user added 0:00.000 in the beginning,
-    // we just skip it
-    if ($cue_time_ms == 0)
-      continue;
-    if ($frame_duration < 0)
-    {
-      // Problem: maybe a typo in the input file
-      show_error("Duration between two slides negative between slide $file_count and ".($file_count+1));
-      exit(1);
-    }
-    if ($cue_slideno != "" && $cue_slideno != "END" && round($cue_slideno) != round($file_count + 1))
-    {
-      // Problem: maybe skipped a number in the slides
-      show_error("Slide ".$cue_slideno." does not match with the count for the slides (expected slide ".$file_count.")");
-      exit(1);
-    }
-    if ($first)
-    {
-      $out .= "video = ";
-      $first = false;
-    }
-    else
-    {
-      $out .= "video = video + ";
-    }
-    $formatted_count = sprintf("%0" . $number_size . "d", $file_count);
-    // There's a -1, since AviSynth starts at frame 0
-    $out .= "ImageSource(\"" . $params["prefix"] . "-" . $formatted_count . "." . $params["extension"] . "\", fps=" . $params["fps"] . ").BicubicResize(" . $params["width"] . "," . $params["height"] . ").Trim(0," . ($frame_duration - 1) . ")\n";
-    // Important: we recompute the current position in ms from the actual
-    // amount of *frames* we added
-    $current_time_ms = $current_frame * (1000 / $params["fps"]);
-    //echo $current_time_ms.",".$cue_time_ms."\n";
-    $file_count++;
+  	  // Read label track from Audacity
+  	  $first = true;
+  	  $current_frame = 0;
+	  $current_time_ms = 0;
+	  $file_count = $params["cnt-start"];
+	  $number_size = strlen($params["cnt-end"]);
+	  if (!file_exists($params["label-track"]))
+	  {
+	  	  // Label track not found
+	  	  show_error("Label track not found: ".$params["label-track"]);
+	  	  exit(1);
+	  }
+	  $lt_file = file_get_contents($params["label-track"]);
+	  $i = 0;
+	  foreach (explode("\n", $lt_file) as $line)
+	  {
+	  	$line = trim($line);
+	  	if (empty($line))
+	  	  continue;
+	  	$matches = array();
+	  	if (preg_match("/[\\d\\.]+/", $line, $matches) === false)
+	  	  continue;
+	  	$cue_time_ms = $matches[0] * 1000;
+	  	$duration_ms = $cue_time_ms - $current_time_ms;
+		$frame_duration = floor(ms_to_frame($duration_ms, $params["fps"]));
+		$current_frame += $frame_duration;
+		$formatted_count = sprintf("%0" . $number_size . "d", $i);
+		if ($i == 0)
+		{
+		  $out .= "video = ";
+		}
+		else
+		{
+		  $out .= "video = video + ";
+		}
+		// There's a -1, since AviSynth starts at frame 0
+		$out .= "ImageSource(\"" . $params["prefix"] . "-" . $formatted_count . "." . $params["extension"] . "\", end = ".($frame_duration - 1).", fps=" . $params["fps"] . ").BicubicResize(" . $params["width"] . "," . $params["height"] . ")\n";
+		// Important: we recompute the current position in ms from the actual
+		// amount of *frames* we added
+		$current_time_ms = $current_frame * (1000 / $params["fps"]);
+		$i++;
+	  }
   }
-  spit("\n", 1);
+  else
+  {
+	  // Process cuemarks
+	  $first = true;
+	  $current_frame = 0;
+	  $current_time_ms = 0;
+	  $file_count = $params["cnt-start"];
+	  $number_size = strlen($params["cnt-end"]);
+	  foreach ($pres->slides as $slide)
+	  {
+		// Process time for cuemark
+		spit(".", 1);
+		$cue_slideno = $slide->number;
+		$cue_time_ms = $slide->cue_time;
+		$duration_ms = $cue_time_ms - $current_time_ms;
+		$frame_duration = floor(ms_to_frame($duration_ms, $params["fps"]));
+		$current_frame += $frame_duration;
+		// If the user added 0:00.000 in the beginning,
+		// we just skip it
+		if ($cue_time_ms == 0)
+		  continue;
+		if ($frame_duration < 0)
+		{
+		  // Problem: maybe a typo in the input file
+		  show_error("Duration between two slides negative between slide $file_count and ".($file_count+1));
+		  exit(1);
+		}
+		if ($cue_slideno != "" && $cue_slideno != "END" && round($cue_slideno) != round($file_count + 1))
+		{
+		  // Problem: maybe skipped a number in the slides
+		  show_error("Slide ".$cue_slideno." does not match with the count for the slides (expected slide ".$file_count.")");
+		  exit(1);
+		}
+		if ($first)
+		{
+		  $out .= "video = ";
+		  $first = false;
+		}
+		else
+		{
+		  $out .= "video = video + ";
+		}
+		$formatted_count = sprintf("%0" . $number_size . "d", $file_count);
+		// There's a -1, since AviSynth starts at frame 0
+		$out .= "ImageSource(\"" . $params["prefix"] . "-" . $formatted_count . "." . $params["extension"] . "\", end = ".($frame_duration - 1).", fps=" . $params["fps"] . ").BicubicResize(" . $params["width"] . "," . $params["height"] . ")\n";
+		// Important: we recompute the current position in ms from the actual
+		// amount of *frames* we added
+		$current_time_ms = $current_frame * (1000 / $params["fps"]);
+		//echo $current_time_ms.",".$cue_time_ms."\n";
+		$file_count++;
+	  }
+	  spit("\n", 1);
+  }
   if (!empty($params["audiofile"]))
   {
     $out .= "audio = DirectShowSource(\"" . $params["audiofile"] . "\",video=false,audio=true).EnsureVBRMP3Sync()\n";
@@ -738,7 +801,11 @@ if ($params["action"] === "burst")
   // Assume default value for input file if not specified
   if (!isset($params["pdfsource"]))
     $params["pdfsource"] = "slideshow.pdf";
-  spitln("Splitting source file ".$params["pdfsource"]."...");
+  $start_string = "";
+  if ($params["burst-from"] > 1)
+  	  $start_string = " starting from page ".$params["burst-from"];
+  $start_page = (int)$params["burst-from"] - 1;
+  spitln("Splitting source file ".$params["pdfsource"].$start_string."...");
   $compression = "";
   if ($params["extension"] === "jpg")
     $compression = "-compress JPEG -quality 90";
@@ -750,7 +817,32 @@ if ($params["action"] === "burst")
   $caption_string = "";
   if (isset($pres->title))
     $caption_string = $pres->title." (%p/%n)";
-  passthru("convert $verbose -caption \"$caption_string\" -comment \"Created with slidecrunch\" -density 150x150 $compression -resize ".$params["width"]."x".$params["height"]." ".$params["pdfsource"]." ".$params["prefix"].".".$params["extension"], $outcode);
+  passthru("pdftk ".$params["pdfsource"]." burst", $outcode);
+  if ($outcode !== 0)
+  {
+    show_error("Error executing pdftk");
+    exit(1);
+  }
+  $files = scandir(".");
+  $i = 0;
+  foreach ($files as $pgfile)
+  {
+  	  if (substr($pgfile, 0, 3) !== "pg_")
+  	  {
+  	  	  continue;
+  	  }
+  	  if ($i > $start_page)
+  	  {
+  	    passthru("convert $verbose -caption \"$caption_string\" -comment \"Created with slidecrunch\" -density 150x150 $compression -resize ".$params["width"]."x".$params["height"]." ".$pgfile." -background \"#FFFFFF\" -flatten ".$params["prefix"]."-".($i - $start_page - 1).".".$params["extension"], $outcode);
+  	  	if ($outcode !== 0)
+      	{
+      	  show_error("Error executing imagemagick");
+        	exit(1);
+      	}
+  	  }
+      unlink($pgfile);
+  	  $i++;
+  }
   if ($outcode !== 0)
   {
     show_error("Error executing imagemagick");

@@ -24,6 +24,14 @@ a timed video and even matching subtitles.</p>
 <p>As an example, this <a href="http://www.youtube.com/watch?v=Pt_G563H7DA">slidecast</a> was
 generated automatically with SlideCrunch.</p>
 
+<h2>Why use SliceCrunch?</h2>
+
+<ul>
+<li>Everything runs locally on your machine. You are not tied to an Internet connection, and the
+videos you produce are not locked somewhere "in the cloud".</li>
+<li>It uses a toolchain made of entirely free and cross-platform software.</li>
+</ul>
+
 <h2>Download SlideCrunch</h2>
 
 <p>Get the latest release of SlideCrunch on the <a href="https://github.com/sylvainhalle/slidecrunch/releases">GitHub project page</a>.</p>
@@ -109,7 +117,8 @@ and so on. Each image will have a resolution of 800x600 pixels.</p>
 </li>
 
 <li>
-<p>To <strong>produce an AVISynth mixing script</strong> from a set of slides, type:</p>
+<p>To <strong>produce an <a href="https://github.com/AviSynth/AviSynthPlus">AviSynth++</a>
+mixing script</strong> from a set of slides, type:</p>
 
 <pre>
 slidecrunch avisynth
@@ -118,7 +127,7 @@ slidecrunch avisynth
 <p>SlideCrunch will look for a list of images numbered <tt>slideshow-1.png</tt>,
 <tt>slideshow-2.png</tt>, and take the
 timing information from <a href="#inputfile"><tt>slideshow.txt</tt></a> to produce a script for
-AVISynth. (No requirement, but you need AVISynth to execute the resulting
+AviSynth+. (No requirement, but you need AviSynth+ to execute the resulting
 script, see the <a href="#requirements">requirements</a>.)</p>
 </li>
 
@@ -591,16 +600,20 @@ these:</p>
 <pre>
 # --------------------------------------------------
 # Auto-generated file by slidecrunch
-# (C) 2010-2011 Sylvain Hallé
+# (C) 2010-2020 Sylvain Hallé
 # --------------------------------------------------
 
-video = ImageSource("Slide_001.jpg", fps=4).BicubicResize(640,480).Trim(0,98)
-video = video + ImageSource("Slide_002.jpg", fps=4).BicubicResize(640,480).Trim(0,79)
-video = video + ImageSource("Slide_003.jpg", fps=4).BicubicResize(640,480).Trim(0,60)
+video = ImageSource("Slide_001.jpg", end=98, fps=4).BicubicResize(640,480)
+video = video + ImageSource("Slide_002.jpg", end=79, fps=4).BicubicResize(640,480)
+video = video + ImageSource("Slide_003.jpg", end=60, fps=4).BicubicResize(640,480)
 ...
 </pre>
 
 <h3>Step 3: Save the slide show as a video</h3>
+
+<p>You have two ways of doing this: using VirtualDub (has a GUI), or ffmpeg (scriptable).</p>
+
+<h4>Option 1: using VirtualDub</h4>
 
 <p>Now open VirtualDub, an in the File menu, click Open and select
 <tt>Slidecast.avs</tt>. (You may not see the file in the list;
@@ -643,6 +656,12 @@ a few seconds to several minutes. Be patient.</p>
 <p>Once this is done, you can double-click on <tt>Slidecast.avi</tt> or open it
 into any media player, such as Windows Media Player. It should show the slides that
 change along with the audio, at the timepoints you gave in your text file. Voilà!</p>
+
+<h4>Option 2: using ffmpeg</h4>
+
+<pre>
+ffmpeg -i slideshow.avs -c:v libx264 -crf 28 slideshow.mp4
+</pre>
 
 <h3>Bonus: generate the subtitles</h3>
 
